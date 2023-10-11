@@ -1,0 +1,7 @@
+2 : LT
+6 : UseLT
+10 : UseLT
+12 : LT
+14 : UseLT
+18 : UseLT
+24 : UseLT

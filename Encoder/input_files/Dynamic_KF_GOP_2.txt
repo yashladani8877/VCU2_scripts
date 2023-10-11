@@ -1,0 +1,2 @@
+90: KF, GopLen=30
+145: KF, GopLen=60
