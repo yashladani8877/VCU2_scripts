@@ -384,7 +384,9 @@ for cell in sheet['A']:
 
     if sheet_option == "Dec_Driver_level":
         if codec_value == 'MJPEG':
-            final_bitstream_path = '/group/siv3/staff/andreis/sibridge/yashl/VCU2/MJPEG_StreamFile/ffmpeg_encoded'
+            final_bitstream_path = '/group/siv3/staff/andreis/sibridge/yashl/VCU2/MJPEG_StreamFile'
+        elif codec_value == 'JPG':
+            final_bitstream_path = '/group/siv3/staff/andreis/sibridge/yashl/VCU2/jpegs'
         else:
             final_bitstream_path = folder_path_driver_level
         print(final_bitstream_path)
@@ -418,6 +420,7 @@ for cell in sheet['A']:
     if "=" in parameters[0]:
         log_file = log_folder + "/" + cell.value + "/" + str(parameters[0].split("=")[1]) + ".txt"
         log_file = log_file.replace(" ","")
+        md5sum_file = log_file.split(".")[0] + ".md5"
    #     print("log file:", log_file)
 
     with open(log_file, "w") as file:
@@ -428,26 +431,25 @@ for cell in sheet['A']:
    #         print("###Bitdepth", bitdepth_value)
             if bitdepth_value == "10":
                 if codec_value == "AVC":
-                    command = "./AL_Decoder.exe -avc -in " + str(file_path) + " -out " + log_folder + "/" + cell.value + "/" + cell.value + ".yuv" + " -bd 10"
+                    command = "./AL_Decoder.exe -avc -in " + str(file_path) + " -bd 10" + " -noyuv --md5 " + md5sum_file
                 else:
-                    command = "./AL_Decoder.exe -in " + str(file_path) + " -out " + log_folder + "/" + cell.value + "/" + cell.value + ".yuv" + " -bd 10"
+                    command = "./AL_Decoder.exe -in " + str(file_path) + " -bd 10" + " -noyuv --md5 " + md5sum_file
             else:
                 if codec_value == "AVC":
-                    command = "./AL_Decoder.exe -avc -in " + str(file_path) + " -out " + log_folder + "/" + cell.value + "/" + cell.value + ".yuv" + " -bd 8"
+                    command = "./AL_Decoder.exe -avc -in " + str(file_path) + " -bd 8" + " -noyuv --md5 " + md5sum_file
                 else:
-                    command = "./AL_Decoder.exe -in " + str(file_path) + " -out " + log_folder + "/" + cell.value + "/" + cell.value + ".yuv" + " -bd 8"
+                    command = "./AL_Decoder.exe -in " + str(file_path) + " -bd 8" + " -noyuv --md5 " + md5sum_file
 
         if sheet_option == "Dec_Argon":
             if bd_flag == 1:
-                command = "./AL_Decoder.exe -in " + str(file_path) + " -out " + log_folder + "/" + cell.value + "/" + cell.value + ".yuv" + " -bd 10"
+                command = "./AL_Decoder.exe -in " + str(file_path) + " -bd 10" + " -noyuv --md5 " + md5sum_file
             else:
-                command = "./AL_Decoder.exe -in " + str(file_path) + " -out " + log_folder + "/" + cell.value + "/" + cell.value + ".yuv" + " -bd 8"
+                command = "./AL_Decoder.exe -in " + str(file_path) + " -bd 8" + " -noyuv --md5 " + md5sum_file
 
         if sheet_option == "Dec_Fuzz":
-            command = "./AL_Decoder.exe -in " + str(file_path) + " -out " + log_folder + "/" + cell.value + "/" + cell.value + ".yuv"
-
+            command = "./AL_Decoder.exe -in " + str(file_path) + " -noyuv --md5 " + md5sum_file
         if sheet_option == "Dec_Driver_level":
-            if codec_value != 'MJPEG':
+            if codec_value != 'MJPEG' and codec_value != 'JPG':
                 md5_command = ['md5sum', yuv_file]
                 print(md5_command)
                 md5_process = subprocess.Popen(md5_command, stdout=subprocess.PIPE)
@@ -459,25 +461,25 @@ for cell in sheet['A']:
                     print(f'Error: {error.decode()}')
             if bitdepth_value == "10":
                 if codec_value == "AVC":
-                    command = "./AL_Decoder.exe -avc -in " + str(file_path) + " -out " + log_folder + "/" + cell.value + "/" + cell.value + ".yuv" + " -bd 10"
-                elif codec_value == "MJPEG":
-                    command = "./AL_Decoder.exe -jpeg -in " + str(file_path) + " -out " + log_folder + "/" + cell.value + "/" + cell.value + ".yuv" + " -bd 10"
+                    command = "./AL_Decoder.exe -avc -in " + str(file_path) + " -bd 10" + " -noyuv --md5 " + md5sum_file
+                elif codec_value == "MJPEG" or codec_value == "JPG":
+                    command = "./AL_Decoder.exe -jpeg -in " + str(file_path) + " -bd 10" + " -noyuv --md5 " + md5sum_file
                 else:
-                    command = "./AL_Decoder.exe -in " + str(file_path) + " -out " + log_folder + "/" + cell.value + "/" + cell.value + ".yuv" + " -bd 10"
+                    command = "./AL_Decoder.exe -in " + str(file_path) + " -bd 10" + " -noyuv --md5 " + md5sum_file
             elif bitdepth_value == "12":
                 if codec_value == "AVC":
-                    command = "./AL_Decoder.exe -avc -in " + str(file_path) + " -out " + log_folder + "/" + cell.value + "/" + cell.value + ".yuv" + " -bd 12"
-                elif codec_value == "MJPEG":
-                    command = "./AL_Decoder.exe -jpeg -in " + str(file_path) + " -out " + log_folder + "/" + cell.value + "/" + cell.value + ".yuv" + " -bd 12"
+                    command = "./AL_Decoder.exe -avc -in " + str(file_path) + " -bd 12" + " -noyuv --md5 " + md5sum_file
+                elif codec_value == "MJPEG" or codec_value == "JPG":
+                    command = "./AL_Decoder.exe -jpeg -in " + str(file_path) + " -bd 12" + " -noyuv --md5 " + md5sum_file
                 else:
-                    command = "./AL_Decoder.exe -in " + str(file_path) + " -out " + log_folder + "/" + cell.value + "/" + cell.value + ".yuv" + " -bd 12"
+                    command = "./AL_Decoder.exe -in " + str(file_path) + " -bd 12" + " -noyuv --md5 " + md5sum_file
             else:
                 if codec_value == "AVC":
-                    command = "./AL_Decoder.exe -avc -in " + str(file_path) + " -out " + log_folder + "/" + cell.value + "/" + cell.value + ".yuv" + " -bd 8"
-                elif codec_value == "MJPEG":
-                    command = "./AL_Decoder.exe -jpeg -in " + str(file_path) + " -out " + log_folder + "/" + cell.value + "/" + cell.value + ".yuv" + " -bd 8"
+                    command = "./AL_Decoder.exe -avc -in " + str(file_path) + " -bd 8" + " -noyuv --md5 " + md5sum_file
+                elif codec_value == "MJPEG" or codec_value == "JPG":
+                    command = "./AL_Decoder.exe -jpeg -in " + str(file_path) + " -bd 8" + " -noyuv --md5 " + md5sum_file
                 else:
-                    command = "./AL_Decoder.exe -in " + str(file_path) + " -out " + log_folder + "/" + cell.value + "/" + cell.value + ".yuv" + " -bd 8"
+                    command = "./AL_Decoder.exe -in " + str(file_path) + " -bd 8" + " -noyuv --md5 " + md5sum_file
     
         print(command)
         process = subprocess.Popen(command, shell=True, stdout=file, stderr=subprocess.STDOUT, text=True)
@@ -487,72 +489,13 @@ for cell in sheet['A']:
             time.sleep(5)
 #            if datetime.datetime.now() > deadline:
 #                time_failure = 1
-#                break
-
-    if sheet_option == "Dec_Conformance":
-        md5sum_file = log_folder + "/" + cell.value + "/" + str(parameters[0].split("=")[1]) + "_md5sum.txt"
-        md5sum_file = md5sum_file.replace(" ","")
-    #   print(md5sum_file)
-        with open(md5sum_file, "w") as file:
-            command = "md5sum " + log_folder + "/" + cell.value + "/" + cell.value + ".yuv"
-            print(command)
-            process = subprocess.Popen(command, shell=True, stdout=file, stderr=subprocess.STDOUT, text=True)
-            process.wait()
-        try:
-            with open(md5sum_file, 'r', encoding='utf-8') as file:
-                hw_md5_contents = file.read()
-                hw_md5_contents = hw_md5_contents.split(" ")[0]
-    #            print("####YUV Md5sum: ", hw_md5_contents)
-        except FileNotFoundError:
-            print("File not found")
-        except IOError:
-            print("Error reading file")
-
-    if sheet_option == "Dec_Argon":
-        md5sum_file = log_folder + "/" + cell.value + "/" + str(parameters[0].split("=")[1]) + "_md5sum.txt"
-        md5sum_file = md5sum_file.replace(" ","")
-    #   print(md5sum_file)
-        with open(md5sum_file, "w") as file:
-            command = "md5sum " + log_folder + "/" + cell.value + "/" + cell.value + ".yuv"
-            print(command)
-            process = subprocess.Popen(command, shell=True, stdout=file, stderr=subprocess.STDOUT, text=True)
-            process.wait()
-        try:
-            with open(md5sum_file, 'r', encoding='utf-8') as file:
-                hw_md5_contents = file.read()
-                hw_md5_contents = hw_md5_contents.split(" ")[0]
-  #             print(hw_md5_contents)
-        except FileNotFoundError:
-            print("File not found")
-        except IOError:
-            print("Error reading file")
-
-    if sheet_option == "Dec_Driver_level":
-        md5sum_file = log_folder + "/" + cell.value + "/" + str(parameters[0].split("=")[1]) + "_md5sum.txt"
-        md5sum_file = md5sum_file.replace(" ","")
-    #   print(md5sum_file)
-        with open(md5sum_file, "w") as file:
-            command = "md5sum " + log_folder + "/" + cell.value + "/" + cell.value + ".yuv"
-            print(command)
-            process = subprocess.Popen(command, shell=True, stdout=file, stderr=subprocess.STDOUT, text=True)
-            process.wait()
-        try:
-            with open(md5sum_file, 'r', encoding='utf-8') as file:
-                hw_md5_contents = file.read()
-                hw_md5_contents = hw_md5_contents.split(" ")[0]
-  #             print(hw_md5_contents)
-        except FileNotFoundError:
-            print("File not found")
-        except IOError:
-            print("Error reading file")
-
-
-    #if sheet_option == "Dec_Fuzz":
-    #    with open(log_file, "r") as file:
-    #        fuzz_log_file_content = file.read()
-    #        if "No Frames Decoded" in fuzz_log_file_content:
-    #            print("###################Match")
-    #            no_decoded_frame_flag = 1
+    try:
+        with open(md5sum_file, 'r', encoding='utf-8') as file:
+            hw_md5_contents = file.read()
+            hw_md5_contents = hw_md5_contents.strip()
+            print("####YUV Md5sum: ", hw_md5_contents)
+    except FileNotFoundError:
+        print("File not found")
 
     print("\n\n", parameters, "\n\n")
 
@@ -581,11 +524,11 @@ for cell in sheet['A']:
         else:
             md5_flag = 0
 
-    if sheet_option == "Dec_Driver_level" and codec_value != 'MJPEG':
-        if md5sum_output == hw_md5_contents:
-            md5_flag = 1
-        else:
-            md5_flag = 0
+#    if sheet_option == "Dec_Driver_level" and codec_value != 'MJPEG' and codec_value != 'JPG':
+#        if md5sum_output == hw_md5_contents:
+#            md5_flag = 1
+#        else:
+#            md5_flag = 0
 
     if sheet_option == "Dec_Conformance":
         if stream_md5_contents == hw_md5_contents:
@@ -628,7 +571,7 @@ for cell in sheet['A']:
             result_cell = output_sheet.cell(row=cell.row,column=(index+1))
             result_cell.value = "PASS"
             result_cell = output_sheet.cell(row=cell.row,column=(stream_md5_index+1))
-            if codec_value != 'MJPEG':
+            if codec_value != 'MJPEG' and codec_value != 'JPG':
                 result_cell.value = md5sum_output
             else:
                 result_cell.value = None
@@ -639,7 +582,7 @@ for cell in sheet['A']:
             result_cell = output_sheet.cell(row=cell.row,column=(index+1))
             result_cell.value = "FAIL"
             result_cell = output_sheet.cell(row=cell.row,column=(stream_md5_index+1))
-            if codec_value != 'MJPEG':
+            if codec_value != 'MJPEG' and codec_value != 'jpg':
                 result_cell.value = md5sum_output
             else:
                 result_cell.value = None
