@@ -20,7 +20,7 @@ keys_values = {
         'INPUT': ['CmdFile', 'I|CropHeight', 'I|CropPosX', 'I|CropPosY', 'I|CropWidth', 'I|Format', 'I|FrameRate', 'GMVFile', 'HDRFile',
         'I|Height', 'MapFile', 'QpTablesFolder', 'ROIFile', 'I|Width', 'I|YUVFile'],
 
-        'DYNAMIC_INPUT': ['D|Height', 'D|Width', 'D|YUVFile'],
+        'DYNAMIC_INPUT': ['D|Height1', 'D|Width1', 'D|YUVFile1', 'D|Height2', 'D|Width2', 'D|YUVFile2', 'D|Height3', 'D|Width3', 'D|YUVFile3'],
 
         'OUTPUT': ['BitstreamFile', 'O|CropHeight', 'O|CropPosX', 'O|CropPosY', 'O|CropWidth', 'O|Format', 'RecFile'],
 
@@ -163,6 +163,51 @@ def extract_parameters(sheet, next_row, cell_values, output_folder):
                     target_text.append('INPUT')
                     lines.append(value)
                 cell_values[i] = "|".join(split_parts)
+            if cell_values[i] == "D|YUVFile1":
+                split_parts = cell_values[i].split("|")
+                cell_values[i] = cell_values[i].split("|")[1]
+                YUV_Folder = "/everest/ssw_multimedia_bkup/VCU2/video_YUV/Crowd_Run_" + str(width1) + "_" + str(height1)
+                #print(YUV_Folder)
+                search_pattern = f'*_{Format}.*'
+
+                matching_files = glob.glob(f'{YUV_Folder}/{search_pattern}')
+
+                for file_path in matching_files:
+                   # print(file_path)
+                    value = str(cell_values[i]) + "      =      " + str(file_path) + " "
+                    target_text.append('DYNAMIC_INPUT')
+                    lines.append(value)
+                cell_values[i] = "|".join(split_parts)
+            if cell_values[i] == "D|YUVFile2":
+                split_parts = cell_values[i].split("|")
+                cell_values[i] = cell_values[i].split("|")[1]
+                YUV_Folder = "/everest/ssw_multimedia_bkup/VCU2/video_YUV/Crowd_Run_" + str(width2) + "_" + str(height2)
+                #print(YUV_Folder)
+                search_pattern = f'*_{Format}.*'
+
+                matching_files = glob.glob(f'{YUV_Folder}/{search_pattern}')
+
+                for file_path in matching_files:
+                   # print(file_path)
+                    value = str(cell_values[i]) + "      =      " + str(file_path) + " "
+                    target_text.append('DYNAMIC_INPUT')
+                    lines.append(value)
+                cell_values[i] = "|".join(split_parts)
+            if cell_values[i] == "D|YUVFile3":
+                split_parts = cell_values[i].split("|")
+                cell_values[i] = cell_values[i].split("|")[1]
+                YUV_Folder = "/everest/ssw_multimedia_bkup/VCU2/video_YUV/Crowd_Run_" + str(width3) + "_" + str(height3)
+                #print(YUV_Folder)
+                search_pattern = f'*_{Format}.*'
+
+                matching_files = glob.glob(f'{YUV_Folder}/{search_pattern}')
+
+                for file_path in matching_files:
+                   # print(file_path)
+                    value = str(cell_values[i]) + "      =      " + str(file_path) + " "
+                    target_text.append('DYNAMIC_INPUT')
+                    lines.append(value)
+                cell_values[i] = "|".join(split_parts)
             i = i+1
             continue
         for key, values in param_dict.items():
@@ -180,6 +225,24 @@ def extract_parameters(sheet, next_row, cell_values, output_folder):
                     if cell_values[i] == "Height":
                         height = cell.value
                        # print(height)
+                    if cell_values[i] == "Width1":
+                        width1 = cell.value
+                        #print(width1)
+                    if cell_values[i] == "Height1":
+                        height1 = cell.value
+                       # print(height1)
+                    if cell_values[i] == "Width2":
+                        width2 = cell.value
+                        #print(width2)
+                    if cell_values[i] == "Height2":
+                        height2 = cell.value
+                        #print(height2)
+                    if cell_values[i] == "Width3":
+                        width3 = cell.value
+                       # print(width3)
+                    if cell_values[i] == "Height3":
+                        height3 = cell.value
+                       # print(height3)
                     if cell_values[i] == "Format":
                         Format = cell.value
                        # print(Format)
@@ -192,7 +255,8 @@ def extract_parameters(sheet, next_row, cell_values, output_folder):
       #      print(cell_values[i])
             a = 0
         i = i+1
-    #print(target_text)
+   # print(target_text)
+   # print(lines)
 
     #This block of code generates the cfg files for each testcase
     if skip != 1:
@@ -216,19 +280,56 @@ def extract_parameters(sheet, next_row, cell_values, output_folder):
     #matching section
     i = 1
     for k in range(len(lines)-2):
+        execute_once = True
         #print(len(lines))
       #  print(len(target_text))
         if skip != 1:
             with open(destination_file, 'r') as file:
                 for line_num, line in enumerate(file, 1):
+         #           print(target_text[j])
                     if target_text[j] in line:
                         final_line = line_num
+          #              print("Before")
+           #             print(final_line)
+                        if target_text[j] == "DYNAMIC_INPUT":
+                            #print("Helloooooooooooooooooooooooooo")
+                            #print(lines[i])
+                            match = re.search(r'([a-zA-Z]+)(\d*)\s*=', lines[i])
+                            if match:
+                                # Extract the captured groups
+                                alpha_part = match.group(1)
+                                trailing_digits = match.group(2)
+
+                                #print(f"Alpha part: {alpha_part}")
+            #                    print(f"Trailing digits: {trailing_digits}")
+                            modified_string = re.sub(r'([a-zA-Z]+)\d*\s*=', r'\1 =', lines[i])
+             #               print(modified_string)
+              #              print(execute_once)
+                            if trailing_digits == "2" and execute_once:
+                                execute_once = False
+               #                 print("Passing     2")
+                                continue
+                            if trailing_digits == "3":
+                #                print("Passing     3")
+                                continue
+                        execute_once = True
+                        break
+                    #if target_text[j] in line:
+                    #    final_line = line_num
+                    #    print("After")
+                    #    print(final_line)
+                    #    dy_in_sec = 0
+                    #    break
 
                 with open(destination_file, 'r') as file:
                         line1 = file.readlines()
+                        #print(line1)
 
                 if final_line >= 1 and final_line <= len(line1) + 1:
+                    if target_text[j] != "DYNAMIC_INPUT":
                         line1.insert(final_line, lines[i] + '\n')
+                    else:
+                        line1.insert(final_line, modified_string + '\n')
 
                 with open(destination_file, 'w') as file:
                             file.writelines(line1)
