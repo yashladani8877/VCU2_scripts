@@ -392,7 +392,7 @@ for cell in sheet['A']:
 
     if sheet_option == "Dec_Driver_level":
         if codec_value == 'MJPEG':
-            final_bitstream_path = '/group/siv3/staff/andreis/sibridge/yashl/VCU2/MJPEG_StreamFile/ffmpeg_encoded'
+            final_bitstream_path = '/everest/ssw_multimedia_bkup/VCU2/MJPEG_StreamFile/ffmpeg_encoded'
         else:
             final_bitstream_path = folder_path_driver_level
         print(final_bitstream_path)
