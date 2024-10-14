@@ -43,11 +43,16 @@ keys_values = {
         'InputSleep', 'Loop', 'MaxPicture', 'ScnChgLookAhead', 'UseBoard']
 }
 
+# iterates through the key-value pairs, and it adds the entry to another dictionary `param_dict`.
+
 for key, values in keys_values.items():
     param_dict[key] = values
 
-error_dict = {}
+# This dictionary contains predefined error messages,                                                                                             
+# key : represents a general description of the error, and 
+# value : is a list of specific strings that are used to identify these errors in logs or output.
 
+error_dict = {}
 error_msg = {
         'Error in ctrlsw app': ['Error', 'error', 'ERROR'],
         'Assertion \'0\' failed': ['Assertion|failed', 'Assertion', 'assertion'],
@@ -57,33 +62,29 @@ error_msg = {
         'Unknown identifire please check property name': ['unknown identifier'],
         'I/p YUVFile not found': ['Exception caught: Can\'t open file for reading'],
         'Exception caught Error': ['Exception caught'],
-        'Get higher Profile to support the usecase': ['getHevcMinimumProfile: Assertion \`0\' failed']
+        'Get higher Profile to support the usecase': ['getHevcMinimumProfile: Assertion \'0\' failed']
 }
+
+# iterates through the key-value pairs, and it adds the entry to another dictionary `error_dict`.
 
 for key, values in error_msg.items():
     error_dict[key] = values
 
-
-
+# Open an Excel file and Select a specific sheet from that file.
+# Return both the selected sheet and the whole workbook for further manipulation.
 
 def open_workbook(xls_file, xls_sheet):
-
-    #open workbook
     workbook = openpyxl.load_workbook(xls_file)
-
-    #Select the sheet by Index or name
     workbook_sheet = workbook[xls_sheet]
-
     return workbook_sheet, workbook
 
-def extract_feature(sheet, row_no):
+# create a folder, checks if the folder already exists and It then returns the folder path for further use.
 
-    #param_values will store the heading of the parameters (e.g Width, Height, Format etc..)
+def extract_feature(sheet, row_no):
     cell = "A" + str(row_no)
-   # print("cell:", cell)
     feature_cell = sheet[cell].value
     feature_cell = "Output/" + str(feature_cell.split(".")[1])
-   # print(feature_cell)
+   
     try:
         os.mkdir(feature_cell)
         print("Created ", feature_cell, ": folder")
@@ -97,14 +98,20 @@ def extract_feature(sheet, row_no):
             exit()
     return feature_cell
 
-def extract_header(sheet, header_row_number):
+# reads the header row of an Excel sheet, collects the values from each cell in that row, and returns them as a list.
 
+def extract_header(sheet, header_row_number):
+    # param_values will store the heading of the parameters (e.g Width, Height, Format etc..) 
     param_values = []
     for cell in sheet[header_row_number]:
         cell_value = cell.value
         param_values.append(cell_value)
 
     return param_values
+
+# function extracts parameter values from an Excel sheet, processes YUV file paths, and 
+# skips empty or invalid cells, ensuring valid inputs for further script execution.
+# return processed list of parameter values
 
 def extract_parameters(sheet, next_row, cell_values, output_folder):
 
@@ -133,13 +140,13 @@ def extract_parameters(sheet, next_row, cell_values, output_folder):
         if cell_values[i] == "Profile":
             codec_keyword = "AVC"
             pattern = re.compile(r'{}'.format(codec_keyword))
-            #print("!!!!!!!!!!!!!!!!Patern:", pattern)
+            
             match = re.search(pattern, cell.value)
             if match:
-               # print("############Match")
                 avc_flag = 1
             else:
                 hevc_flag = 1
+
         if cell.value is None:
             if str(cell_values[i]) == "BitstreamFile" and args.output is True:
                 if avc_flag == 1:
@@ -149,62 +156,58 @@ def extract_parameters(sheet, next_row, cell_values, output_folder):
                     hevc_flag = 0
                 target_text.append('OUTPUT')
                 lines.append(value)
+
             if cell_values[i] == "I|YUVFile":
                 split_parts = cell_values[i].split("|")
                 cell_values[i] = cell_values[i].split("|")[1]
-                YUV_Folder = "/mnt/everest/ssw_multimedia_bkup/VCU2/video_YUV/Crowd_Run_" + str(width) + "_" + str(height)
-                #print(YUV_Folder)
+                YUV_Folder = "/mnt/build/ssw_vcu/yashl/VCU2/video_YUV/Crowd_Run_" + str(width) + "_" + str(height)
                 search_pattern = f'*_{Format}.*'
 
                 matching_files = glob.glob(f'{YUV_Folder}/{search_pattern}')
 
                 for file_path in matching_files:
-                   # print(file_path)
                     value = str(cell_values[i]) + "      =      " + str(file_path) + " "
                     target_text.append('INPUT')
                     lines.append(value)
                 cell_values[i] = "|".join(split_parts)
+
             if cell_values[i] == "D|YUVFile1":
                 split_parts = cell_values[i].split("|")
                 cell_values[i] = cell_values[i].split("|")[1]
-                YUV_Folder = "/mnt/everest/ssw_multimedia_bkup/VCU2/video_YUV/Crowd_Run_" + str(width1) + "_" + str(height1)
-                #print(YUV_Folder)
+                YUV_Folder = "/mnt/build/ssw_vcu/yashl/VCU2/video_YUV/Crowd_Run_" + str(width1) + "_" + str(height1)
                 search_pattern = f'*_{Format}.*'
 
                 matching_files = glob.glob(f'{YUV_Folder}/{search_pattern}')
 
                 for file_path in matching_files:
-                   # print(file_path)
                     value = str(cell_values[i]) + "      =      " + str(file_path) + " "
                     target_text.append('DYNAMIC_INPUT')
                     lines.append(value)
                 cell_values[i] = "|".join(split_parts)
+
             if cell_values[i] == "D|YUVFile2":
                 split_parts = cell_values[i].split("|")
                 cell_values[i] = cell_values[i].split("|")[1]
-                YUV_Folder = "/mnt/everest/ssw_multimedia_bkup/VCU2/video_YUV/Crowd_Run_" + str(width2) + "_" + str(height2)
-                #print(YUV_Folder)
+                YUV_Folder = "/mnt/build/ssw_vcu/yashl/VCU2/video_YUV/Crowd_Run_" + str(width2) + "_" + str(height2)
                 search_pattern = f'*_{Format}.*'
 
                 matching_files = glob.glob(f'{YUV_Folder}/{search_pattern}')
 
                 for file_path in matching_files:
-                   # print(file_path)
                     value = str(cell_values[i]) + "      =      " + str(file_path) + " "
                     target_text.append('DYNAMIC_INPUT')
                     lines.append(value)
                 cell_values[i] = "|".join(split_parts)
+
             if cell_values[i] == "D|YUVFile3":
                 split_parts = cell_values[i].split("|")
                 cell_values[i] = cell_values[i].split("|")[1]
-                YUV_Folder = "/mnt/everest/ssw_multimedia_bkup/VCU2/video_YUV/Crowd_Run_" + str(width3) + "_" + str(height3)
-                #print(YUV_Folder)
+                YUV_Folder = "/mnt/build/ssw_vcu/yashl/VCU2/video_YUV/Crowd_Run_" + str(width3) + "_" + str(height3)
                 search_pattern = f'*_{Format}.*'
 
                 matching_files = glob.glob(f'{YUV_Folder}/{search_pattern}')
 
                 for file_path in matching_files:
-                   # print(file_path)
                     value = str(cell_values[i]) + "      =      " + str(file_path) + " "
                     target_text.append('DYNAMIC_INPUT')
                     lines.append(value)
@@ -212,10 +215,10 @@ def extract_parameters(sheet, next_row, cell_values, output_folder):
 
             i = i+1
             continue
+
         for key, values in param_dict.items():
-    #        print("i = ", i)
             if cell_values[i] in values:
-     #           print(cell_values[i])
+
                 #This if condition checks for same named parameters and put them in according sections
                 if "|" in cell_values[i]:
                     a = 1
@@ -223,41 +226,31 @@ def extract_parameters(sheet, next_row, cell_values, output_folder):
                     cell_values[i] = cell_values[i].split("|")[1]
                     if cell_values[i] == "Width":
                         width = cell.value
-                       # print(width)
                     if cell_values[i] == "Height":
                         height = cell.value
-                       # print(height)
                     if cell_values[i] == "Width1":
                         width1 = cell.value
-                        #print(width1)
                     if cell_values[i] == "Height1":
                         height1 = cell.value
-                       # print(height1)
                     if cell_values[i] == "Width2":
                         width2 = cell.value
-                        #print(width2)
                     if cell_values[i] == "Height2":
                         height2 = cell.value
-                        #print(height2)
                     if cell_values[i] == "Width3":
                         width3 = cell.value
-                       # print(width3)
                     if cell_values[i] == "Height3":
                         height3 = cell.value
-                       # print(height3)
                     if cell_values[i] == "Format":
                         Format = cell.value
-                       # print(Format)
+                    
                 target_text.append(key)
                 break
         value = str(cell_values[i]) + "      =      " + str(cell.value) + " "
         lines.append(value)
         if a == 1:
             cell_values[i] = "|".join(split_parts)
-      #      print(cell_values[i])
             a = 0
         i = i+1
-    # print(target_text)
 
 
     #This block of code generates the cfg files for each testcase
@@ -283,49 +276,33 @@ def extract_parameters(sheet, next_row, cell_values, output_folder):
     i = 1
     for k in range(len(lines)-1):
         execute_once = True
-        #print(len(lines))
-      #  print(len(target_text))
+    
         if skip != 1:
             with open(destination_file, 'r') as file:
                 for line_num, line in enumerate(file, 1):
-
                     if target_text[j] in line:
                         final_line = line_num
 
-           #             print(final_line)
                         if target_text[j] == "DYNAMIC_INPUT":
-                            #print("Helloooooooooooooooooooooooooo")
-                            #print(lines[i])
+                    
                             match = re.search(r'([a-zA-Z]+)(\d*)\s*=', lines[i])
                             if match:
                                 # Extract the captured groups
                                 alpha_part = match.group(1)
                                 trailing_digits = match.group(2)
 
-                                #print(f"Alpha part: {alpha_part}")
-            #                    print(f"Trailing digits: {trailing_digits}")
                             modified_string = re.sub(r'([a-zA-Z]+)\d*\s*=', r'\1 =', lines[i])
-             #               print(modified_string)
-              #              print(execute_once)
+             
                             if trailing_digits == "2" and execute_once:
                                 execute_once = False
-               #                 print("Passing     2")
                                 continue
                             if trailing_digits == "3":
-                #                print("Passing     3")
                                 continue
                         execute_once = True
                         break
-                    #if target_text[j] in line:
-                    #    final_line = line_num
-                    #    print("After")
-                    #    print(final_line)
-                    #    dy_in_sec = 0
-                    #    break
 
                 with open(destination_file, 'r') as file:
                         line1 = file.readlines()
-
 
                 if final_line >= 1 and final_line <= len(line1) + 1:
                     if target_text[j] != "DYNAMIC_INPUT":
@@ -339,6 +316,8 @@ def extract_parameters(sheet, next_row, cell_values, output_folder):
                 i = i+1
 
     return lines
+
+# Identify known issues or failures by checking logs predefined error message
 
 def parce_error(file_path, error_dict):
     with open(file_path, 'r') as file:
@@ -367,9 +346,8 @@ file_option = args.file
 sheet_option = args.sheet
 output_option = args.output
 
-#print(f"file_option: {file_option}")
-#print(f"sheet_option: {sheet_option}")
-#print(f"output_option: {output_option}")
+# create a folder, check if the folder already exists,
+# and prompt the user whether to overwrite it or not.
 
 try:
     os.mkdir("Output")
@@ -381,12 +359,8 @@ except FileExistsError:
     else:
         print("Program closing")
         exit()
-#xls_file = '/group/siv3/staff/andreis/sibridge/yashl/VCU2/python_script_for_TC/yash_python_scripting/XLS/Encoder_tests.xlsx'
-#xls_sheet = 'Temp'
-#next_row = 4
 
 CWD = os.getcwd()
-#print(CWD)
 
 orignal_xls = args.file
 output_xls = "Output/output.xlsx"
@@ -396,86 +370,74 @@ shutil.copy2(orignal_xls, output_xls)
 output_sheet, output_workbook = open_workbook(str(output_xls), str(args.sheet))
 
 sheet, new_workbook = open_workbook(str(args.file), str(args.sheet))
-#next_row, header_values, Heading_cell = extract_headers(sheet)
 
 for cell in sheet['A']:
     time_failure = 0
-   # fill_color = cell.fill.start_color.rgb
-   # print(f"The fill color of the cell is: {fill_color}")
     if sheet[cell.coordinate].fill.start_color.rgb == 'FFFF0000':
         break
     if sheet[cell.coordinate].fill.start_color.rgb != 'FF000000' and cell.value is None:
-    #    print("Continue", cell.row)
         continue
     if sheet[cell.coordinate].fill.start_color.rgb == 'FF000000':
-       # print("#####", cell.row)
         #Enabling flag so in next row we will extract feature name
         extract_feature_flag = 1
-     #   print("Black detected at row:", cell.row)
         continue
     if extract_feature_flag == 1:
-      #  print("extract_feature condition true")
         feature_folder = extract_feature(sheet, cell.row)
         log_folder = str(CWD) + "/" + str(feature_folder)
         if feature_folder == "Output/Color_Format":
-            stream_md5_path = "/mnt/everest/ssw_multimedia_bkup/VCU2/regression_logs/Encoder/Color_Format/Output/Color_Format" 
+            stream_md5_path = "/mnt/build/ssw_vcu/yashl/VCU2/regression_logs/Encoder/Color_Format/Output/Color_Format" 
         elif feature_folder == "Output/Conformance":
-            stream_md5_path = "/mnt/everest/ssw_multimedia_bkup/VCU2/regression_logs/Encoder/Conformance/Output/Conformance"
+            stream_md5_path = "/mnt/build/ssw_vcu/yashl/VCU2/regression_logs/Encoder/Conformance/Output/Conformance"
         elif feature_folder == "Output/GOP":
-            stream_md5_path = "/mnt/everest/ssw_multimedia_bkup/VCU2/regression_logs/Encoder/Parameters/Output/GOP"
+            stream_md5_path = "/mnt/build/ssw_vcu/yashl/VCU2/regression_logs/Encoder/Parameters/Output/GOP"
         elif feature_folder == "Output/Input":
-            stream_md5_path = "/mnt/everest/ssw_multimedia_bkup/VCU2/regression_logs/Encoder/Parameters/Output/Input"
+            stream_md5_path = "/mnt/build/ssw_vcu/yashl/VCU2/regression_logs/Encoder/Parameters/Output/Input"
         elif feature_folder == "Output/Dynamic_Input":
-            stream_md5_path = "/mnt/everest/ssw_multimedia_bkup/VCU2/regression_logs/Encoder/Parameters/Output/Dynamic_Input"
+            stream_md5_path = "/mnt/build/ssw_vcu/yashl/VCU2/regression_logs/Encoder/Parameters/Output/Dynamic_Input"
         elif feature_folder == "Output/Settings":
-            stream_md5_path = "/mnt/everest/ssw_multimedia_bkup/VCU2/regression_logs/Encoder/Parameters/Output/Settings"
+            stream_md5_path = "/mnt/build/ssw_vcu/yashl/VCU2/regression_logs/Encoder/Parameters/Output/Settings"
         elif feature_folder == "Output/Output":
-            stream_md5_path = "/mnt/everest/ssw_multimedia_bkup/VCU2/regression_logs/Encoder/Parameters/Output/Output"
+            stream_md5_path = "/mnt/build/ssw_vcu/yashl/VCU2/regression_logs/Encoder/Parameters/Output/Output"
         elif feature_folder == "Output/Run":
-            stream_md5_path = "/mnt/everest/ssw_multimedia_bkup/VCU2/regression_logs/Encoder/Parameters/Output/Run"
+            stream_md5_path = "/mnt/build/ssw_vcu/yashl/VCU2/regression_logs/Encoder/Parameters/Output/Run"
         elif feature_folder == "Output/RateControl":
-            stream_md5_path = "/mnt/everest/ssw_multimedia_bkup/VCU2/regression_logs/Encoder/Parameters/Output/RateControl"
+            stream_md5_path = "/mnt/build/ssw_vcu/yashl/VCU2/regression_logs/Encoder/Parameters/Output/RateControl"
         elif feature_folder == "Output/Dynamic_Bframes":
-            stream_md5_path = "/mnt/everest/ssw_multimedia_bkup/VCU2/regression_logs/Encoder/Dynamic_Parameters/Output/Dynamic_Bframes"
+            stream_md5_path = "/mnt/build/ssw_vcu/yashl/VCU2/regression_logs/Encoder/Dynamic_Parameters/Output/Dynamic_Bframes"
         elif feature_folder == "Output/Dynamic_Bitrate":
-            stream_md5_path = "/mnt/everest/ssw_multimedia_bkup/VCU2/regression_logs/Encoder/Dynamic_Parameters/Output/Dynamic_Bitrate"
+            stream_md5_path = "/mnt/build/ssw_vcu/yashl/VCU2/regression_logs/Encoder/Dynamic_Parameters/Output/Dynamic_Bitrate"
         elif feature_folder == "Output/Dynamic_FrameRate":
-            stream_md5_path = "/mnt/everest/ssw_multimedia_bkup/VCU2/regression_logs/Encoder/Dynamic_Parameters/Output/Dynamic_FrameRate"
+            stream_md5_path = "/mnt/build/ssw_vcu/yashl/VCU2/regression_logs/Encoder/Dynamic_Parameters/Output/Dynamic_FrameRate"
         elif feature_folder == "Output/Dynamic_GOP":
-            stream_md5_path = "/mnt/everest/ssw_multimedia_bkup/VCU2/regression_logs/Encoder/Dynamic_Parameters/Output/Dynamic_GOP"
+            stream_md5_path = "/mnt/build/ssw_vcu/yashl/VCU2/regression_logs/Encoder/Dynamic_Parameters/Output/Dynamic_GOP"
         elif feature_folder == "Output/Dynamic_KeyFrame":
-            stream_md5_path = "/mnt/everest/ssw_multimedia_bkup/VCU2/regression_logs/Encoder/Dynamic_Parameters/Output/Dynamic_KeyFrame"
+            stream_md5_path = "/mnt/build/ssw_vcu/yashl/VCU2/regression_logs/Encoder/Dynamic_Parameters/Output/Dynamic_KeyFrame"
         elif feature_folder == "Output/Dynamic_KFandGOP":
-            stream_md5_path = "/mnt/everest/ssw_multimedia_bkup/VCU2/regression_logs/Encoder/Dynamic_Parameters/Output/Dynamic_KFandGOP"
+            stream_md5_path = "/mnt/build/ssw_vcu/yashl/VCU2/regression_logs/Encoder/Dynamic_Parameters/Output/Dynamic_KFandGOP"
         else:
             print("Error: Unexpected featute folder name")
-       # print(log_folder)
+
         extract_feature_flag = 0
         #We got the feature name enabling this flag as in next row we will extract the headers of testcase
         extract_header_flag = 1
         continue
     if extract_header_flag == 1:
-       # print("Extract headers condition true")
         header_values = extract_header(sheet, cell.row)
-       # print("###############", "row", cell.row, len(header_values))
         extract_header_flag = 0
         continue
     if args.tc_no is not None:
-#        print("Tc argumenat found")
         if cell.value != args.tc_no:
             continue
     parameters = extract_parameters(sheet, cell.row, header_values, log_folder)
     substring = "Result"
     filtered_list = [element for element in parameters if substring in element]
-   # print(filtered_list)
     if filtered_list:
         final_index = parameters.index(filtered_list[0])
-       # print("@!@!@!@!@!@!@!@!",final_index)
         output_string = parameters[final_index].split("=")[1]
         output_string = output_string.replace(" ","")
         if output_string == "PASS":
             continue
-       # print(output_file)
+
     bitstream_substring = "BitstreamFile"
     bitstream_filtered_list = [element for element in parameters if bitstream_substring in element]
     if bitstream_filtered_list:
@@ -490,7 +452,7 @@ for cell in sheet['A']:
         log_file = log_folder + "/" + cell.value + "/" + str(parameters[0].split("=")[1]) + ".txt"
         log_file = log_file.replace(" ","")
         md5_file = log_file.split(".")[0] + ".md5"
-   #     print("log file:", log_file)
+        
     with open(log_file, "w") as file:
         current_time = datetime.datetime.now()
         mem_command = "cat /proc/meminfo"
@@ -500,9 +462,8 @@ for cell in sheet['A']:
         deadline = current_time + datetime.timedelta(minutes=180)
         command = "ctrlsw_encoder --embedded --device /dev/al_e2xx -cfg " + str(log_folder) + "/" + str(test_case) + "/" + "input_" + str(test_case) + ".cfg " + "--md5-stream " + str(md5_file)
         print(command)
-        #process = subprocess.Popen(command, shell=True, stdout=file, text=True)
+        
         process = subprocess.Popen(command, shell=True, stdout=file, stderr=subprocess.STDOUT, text=True)
-#        process = subprocess.Popen("ls -lrt", shell=True, stdout=file, stderr=subprocess.PIPE, text=True)
         pid = process.pid
         #Polling here until the encoding or decoding is Done
         while process.poll() is None:
@@ -526,19 +487,11 @@ for cell in sheet['A']:
     if md5_process.returncode == 0:
         hw_md5_content = output.decode().split()[0]
     else:
-        print(f'Error: {md5_command}')
+        print(f'md5 Error: {md5_command}')
         hw_md5_content = " "
-   # print("HW_MD5 File: ", md5_file)
-   # try:
-   #     with open(md5_file, 'r', encoding='utf-8') as file: 
-   #         hw_md5_content = file.read()
-   #         hw_md5_content = re.sub(r'\s+', ' ', hw_md5_content).strip()
-   #         hw_md5_content = hw_md5_content.split(" ")[0]
-   # except IOError:
-   #     print("Error reading",md5_file)
-   #     hw_md5_content = " "
+   
     stream_md5_file = stream_md5_path + "/" + test_case + "/" + test_case + ".md5"
-    print("Stream MD5 File: ", stream_md5_file)
+
     if os.path.exists(stream_md5_file):
         with open(stream_md5_file, 'r', encoding='utf-8') as file:
             stream_md5_contents = file.read()
@@ -554,22 +507,16 @@ for cell in sheet['A']:
 
     substring = "BitstreamFile"
     filtered_list = [element for element in parameters if substring in element]
-   # print(filtered_list)
     if filtered_list:
         final_index = parameters.index(filtered_list[0])
-       # print("@!@!@!@!@!@!@!@!",final_index)
         output_string = parameters[final_index].split("=")[1]
         output_file = output_string.split("/")[-1]
-       # print(output_file)
+
     substring2 = "YUVFile"
     filtered_list2 = [element for element in parameters if substring2 in element]
-   # print(filtered_list)
     if filtered_list2:
         final_index2 = parameters.index(filtered_list2[0])
-       # print("@!@!@!@!@!@!@!@!",final_index)
         output_string2 = parameters[final_index2].split("=")[1]
-       # print(output_string2)
-       # print(output_file)
     try:
         yuv_index = header_values.index('I|YUVFile')
         yuv_result_flag = 0
@@ -595,8 +542,7 @@ for cell in sheet['A']:
         result_flag = 0
     except:
         result_flag = 1
-  #  print("!!!!!!!!!!!!!!!   Index:", index)
- #   print(len(header_values))
+
     if yuv_result_flag != 1:
         yuv_result_cell = output_sheet.cell(row=cell.row,column=(yuv_index+1))
         yuv_result_cell.value = output_string2
@@ -613,9 +559,11 @@ for cell in sheet['A']:
     if error_flag != 1 and result_flag != 1 and time_failure != 1 and md5_flag == 1:
         result_cell = output_sheet.cell(row=cell.row,column=(index+1))
         result_cell.value = "PASS"
+        print("Result : ", result_cell.value)
     else:
         result_cell = output_sheet.cell(row=cell.row,column=(index+1))
         result_cell.value = "FAIL"
+        print("Result : ", result_cell.value)
     output_workbook.save(output_xls)
     print("Completed----------------------", test_case, "-----------------------------------\n\n")
 
