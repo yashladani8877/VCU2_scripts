@@ -279,27 +279,29 @@ def extract_parameters(sheet, next_row, cell_values, output_folder):
     
         if skip != 1:
             with open(destination_file, 'r') as file:
-                for line_num, line in enumerate(file, 1):
-                    if target_text[j] in line:
-                        final_line = line_num
+                try : 
+                    for line_num, line in enumerate(file, 1):
+                        if target_text[j] in line:
+                            final_line = line_num
 
-                        if target_text[j] == "DYNAMIC_INPUT":
-                    
-                            match = re.search(r'([a-zA-Z]+)(\d*)\s*=', lines[i])
-                            if match:
-                                # Extract the captured groups
-                                alpha_part = match.group(1)
-                                trailing_digits = match.group(2)
+                            if target_text[j] == "DYNAMIC_INPUT":
+                                match = re.search(r'([a-zA-Z]+)(\d*)\s*=', lines[i])
+                                if match:
+                                    # Extract the captured groups
+                                    alpha_part = match.group(1)
+                                    trailing_digits = match.group(2)
 
-                            modified_string = re.sub(r'([a-zA-Z]+)\d*\s*=', r'\1 =', lines[i])
+                                modified_string = re.sub(r'([a-zA-Z]+)\d*\s*=', r'\1 =', lines[i])
              
-                            if trailing_digits == "2" and execute_once:
-                                execute_once = False
-                                continue
-                            if trailing_digits == "3":
-                                continue
-                        execute_once = True
-                        break
+                                if trailing_digits == "2" and execute_once:
+                                    execute_once = False
+                                    continue
+                                if trailing_digits == "3":
+                                    continue
+                            execute_once = True
+                            break
+                except IndexError as e :
+                    print(f"Error : {e} \n* Please make sure Bitstreamfile, Stream Md5sum, HW Md5sum and Result fields in xlsx file are empty *")
 
                 with open(destination_file, 'r') as file:
                         line1 = file.readlines()
@@ -452,34 +454,38 @@ for cell in sheet['A']:
         log_file = log_folder + "/" + cell.value + "/" + str(parameters[0].split("=")[1]) + ".txt"
         log_file = log_file.replace(" ","")
         md5_file = log_file.split(".")[0] + ".md5"
+
+    try :
+        with open(log_file, "w") as file:
+            current_time = datetime.datetime.now()
+            mem_command = "cat /proc/meminfo"
+            process = subprocess.Popen(mem_command, shell=True, stdout=file, stderr=subprocess.STDOUT, text=True)
+            process.wait()
+            #this the maximum time we will wait for 1 usecase
+            deadline = current_time + datetime.timedelta(minutes=180)
+            command = "ctrlsw_encoder --embedded --device /dev/al_e2xx -cfg " + str(log_folder) + "/" + str(test_case) + "/" + "input_" + str(test_case) + ".cfg " + "--md5-stream " + str(md5_file)
+            print(command)
         
-    with open(log_file, "w") as file:
-        current_time = datetime.datetime.now()
-        mem_command = "cat /proc/meminfo"
-        process = subprocess.Popen(mem_command, shell=True, stdout=file, stderr=subprocess.STDOUT, text=True)
-        process.wait()
-        #this the maximum time we will wait for 1 usecase
-        deadline = current_time + datetime.timedelta(minutes=180)
-        command = "ctrlsw_encoder --embedded --device /dev/al_e2xx -cfg " + str(log_folder) + "/" + str(test_case) + "/" + "input_" + str(test_case) + ".cfg " + "--md5-stream " + str(md5_file)
-        print(command)
-        
-        process = subprocess.Popen(command, shell=True, stdout=file, stderr=subprocess.STDOUT, text=True)
-        pid = process.pid
-        #Polling here until the encoding or decoding is Done
-        while process.poll() is None:
-            time.sleep(5)
-            if datetime.datetime.now() > deadline:
-                time_failure = 1
-                try:
-                    os.kill(pid, signal.SIGTERM)
-                    print("Due to hang, ", test_case, "is failed and process : ", pid, "is killed")
-                    break
-                except OSError:
-                    print("Could not kill the process : ", pid)
-#                   break
+            process = subprocess.Popen(command, shell=True, stdout=file, stderr=subprocess.STDOUT, text=True)
+            pid = process.pid
+            #Polling here until the encoding or decoding is Done
+            while process.poll() is None:
+                time.sleep(5)
+                if datetime.datetime.now() > deadline:
+                    time_failure = 1
+                    try:
+                        os.kill(pid, signal.SIGTERM)
+                        print("Due to hang, ", test_case, "is failed and process : ", pid, "is killed")
+                        break
+                    except OSError:
+                        print("Could not kill the process : ", pid)
+#                       break
     
-        process = subprocess.Popen(mem_command, shell=True, stdout=file, stderr=subprocess.STDOUT, text=True)
-        process.wait()
+            process = subprocess.Popen(mem_command, shell=True, stdout=file, stderr=subprocess.STDOUT, text=True)
+            process.wait()
+    except FileNotFoundError as e:
+        print(f"Error : {e}, The file path does not exist.\n* Please check input YUV file *")
+
     print("\n\n", parameters, "\n\n")
     md5_command = ['md5sum', bitstream_file]
     md5_process = subprocess.Popen(md5_command, stdout=subprocess.PIPE)
