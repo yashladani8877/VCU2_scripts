@@ -147,7 +147,11 @@ def extract_parameters(sheet, next_row, cell_values, output_folder):
             else:
                 hevc_flag = 1
 
-        if cell.value is None:
+    #Non breaking space replace with None
+        if cell.value == '\xa0':
+            cell.value = None 
+
+        if cell.value is None: 
             if str(cell_values[i]) == "BitstreamFile" and args.output is True:
                 if avc_flag == 1:
                     value = str(cell_values[i]) + "      =      " + str(output_folder) + "/" + str(TC_No) + "/" + str(TC_No) + ".avc" + " "
@@ -316,7 +320,6 @@ def extract_parameters(sheet, next_row, cell_values, output_folder):
                             file.writelines(line1)
                 j = j+1
                 i = i+1
-
     return lines
 
 # Identify known issues or failures by checking logs predefined error message
