@@ -113,6 +113,104 @@ def extract_header(sheet, header_row_number):
 # skips empty or invalid cells, ensuring valid inputs for further script execution.
 # return processed list of parameter values
 
+def extract_parameters_omx(sheet_omx, next_row_omx, cell_values_omx, output_folder_omx):
+
+    #This function will be called in case of OpenMax TC only
+    TC_No = sheet_omx.cell(row=next_row_omx, column=1).value
+    a = 0
+    i = 0
+    j = 0
+    skip = 0
+
+    lines_omx = []
+
+    for cell in sheet_omx[next_row_omx]:
+        if cell_values_omx[i] == "Result" or cell_values_omx[i] == "TC_No" or cell_values_omx[i] == "HD MD5sum" or cell_values_omx[i] == "Comment":
+            if cell.value == "PASS":
+                skip = 1
+                break
+            i = i + 1
+            continue
+
+        if cell_values_omx[i] == "codec":
+            codec = cell.value
+            value = "--" + str(cell.value)
+            lines_omx.append(value)
+            i = i + 1
+            continue
+
+        #Non breaking space replace with None
+        if cell.value == '\xa0':
+            cell.value = None
+
+        if cell.value == None and cell_values_omx[i] != "input_file" and cell_values_omx[i] != "out":
+            i = i + 1
+            continue
+
+        if cell_values_omx[i] == "width":
+            width_omx = cell.value
+        elif cell_values_omx[i] == "height":
+            height_omx = cell.value
+        elif cell_values_omx[i] == "fourcc":
+            fourcc_omx = cell.value
+        elif cell_values_omx[i] == "dma-out" or cell_values_omx[i] == "dma-in":
+            if cell.value == 0:
+                i = i + 1
+                continue
+            else:
+                lines_omx.append("--" + str(cell_values_omx[i]))
+                i = i + 1
+                continue
+
+
+        #Add logic to find the input YUV file from width,height and format
+        if cell_values_omx[i] == "out":
+            if 'hevc' in str(codec): 
+                out_file = str(log_folder) + "/" + str(TC_No) + "/" + str(TC_No) + ".hevc"
+            else:
+                out_file = str(log_folder) + "/" + str(TC_No) + "/" + str(TC_No) + ".avc"
+            value = "--" + str(cell_values_omx[i]) + " " + str(out_file)
+            lines_omx.append(value)
+            i = i + 1
+            continue
+        if cell_values_omx[i] == "input_file":
+            YUV_Folder_omx = "/mnt/build/ssw_vcu/yashl/VCU2/video_YUV/Crowd_Run_" + str(width_omx) + "_" + str(height_omx)
+            search_pattern_omx = f'*_{fourcc_omx}.*'
+            #search_pattern_omx = search_pattern_omx.upper()
+
+            matching_files_omx = glob.glob(f'{YUV_Folder_omx}/{search_pattern_omx}')
+
+
+            for file_path in matching_files_omx:
+                value = str(file_path)
+                lines_omx.append(value)
+
+            i = i + 1
+            continue
+        if cell_values_omx[i] == "fourcc":
+            value = "--" + str(cell_values_omx[i]) + " " + str(cell.value.lower())
+        else:
+            value = "--" + str(cell_values_omx[i]) + " " + str(cell.value)
+        lines_omx.append(value)
+        i = i + 1
+        continue
+
+    print(lines_omx)
+    try:
+        os.mkdir(str(output_folder_omx) + "/" + str(TC_No))
+        print("Created ", str(TC_No), "folder: Head over to this folder for more TC related information and output files")
+    except FileExistsError:
+        print("Output folder ", str(TC_No), ": alreaady Exist do you want to continue and replace the data with new one? (y/n)")
+        user_input = input()
+        if user_input.lower() == 'y':
+            pass
+        else:
+            print("Program closing")
+            exit()
+    return lines_omx
+
+
+
 def extract_parameters(sheet, next_row, cell_values, output_folder):
 
     #In XLS we will be using row 4 as the heading of the parameters
@@ -147,7 +245,7 @@ def extract_parameters(sheet, next_row, cell_values, output_folder):
             else:
                 hevc_flag = 1
 
-    #Non breaking space replace with None
+        #Non breaking space replace with None
         if cell.value == '\xa0':
             cell.value = None 
 
@@ -366,6 +464,7 @@ except FileExistsError:
         exit()
 
 CWD = os.getcwd()
+omx_flag = 0
 
 orignal_xls = args.file
 output_xls = "Output/output.xlsx"
@@ -378,11 +477,11 @@ sheet, new_workbook = open_workbook(str(args.file), str(args.sheet))
 
 for cell in sheet['A']:
     time_failure = 0
-    if sheet[cell.coordinate].fill.start_color.rgb == 'FFFF0000':
+    if sheet[cell.coordinate].fill.start_color.rgb == 'FFFF0000': #FF0000 is Red
         break
     if sheet[cell.coordinate].fill.start_color.rgb != 'FF000000' and cell.value is None:
         continue
-    if sheet[cell.coordinate].fill.start_color.rgb == 'FF000000':
+    if sheet[cell.coordinate].fill.start_color.rgb == 'FF000000': #000000 is black
         #Enabling flag so in next row we will extract feature name
         extract_feature_flag = 1
         continue
@@ -419,6 +518,9 @@ for cell in sheet['A']:
             stream_md5_path = "/mnt/build/ssw_vcu/yashl/VCU2/regression_logs/Encoder/Dynamic_Parameters/Output/Dynamic_KeyFrame"
         elif feature_folder == "Output/Dynamic_KFandGOP":
             stream_md5_path = "/mnt/build/ssw_vcu/yashl/VCU2/regression_logs/Encoder/Dynamic_Parameters/Output/Dynamic_KFandGOP"
+        elif feature_folder == "Output/OpenMax":
+            stream_md5_path = "/mnt/build/ssw_vcu/yashl/VCU2/regression_logs/Encoder/omx_support/Output/OpenMax" 
+            omx_flag = 1
         else:
             print("Error: Unexpected featute folder name")
 
@@ -433,7 +535,18 @@ for cell in sheet['A']:
     if args.tc_no is not None:
         if cell.value != args.tc_no:
             continue
-    parameters = extract_parameters(sheet, cell.row, header_values, log_folder)
+    if omx_flag == 1:
+        parameters = extract_parameters_omx(sheet, cell.row, header_values, log_folder)
+        yuv_index_omx = [i for i, j in enumerate(parameters) if 'yuv' in j]
+        yuv_index_omx = yuv_index_omx[0]
+
+        if 'input_file' in header_values:
+            input_index_omx = header_values.index('input_file')
+            input_file_omx = parameters[yuv_index_omx]
+        if 'out' in header_values:
+            out_index_omx = header_values.index('out')
+    else:
+        parameters = extract_parameters(sheet, cell.row, header_values, log_folder)
     substring = "Result"
     filtered_list = [element for element in parameters if substring in element]
     if filtered_list:
@@ -443,6 +556,7 @@ for cell in sheet['A']:
         if output_string == "PASS":
             continue
 
+
     bitstream_substring = "BitstreamFile"
     bitstream_filtered_list = [element for element in parameters if bitstream_substring in element]
     if bitstream_filtered_list:
@@ -450,13 +564,12 @@ for cell in sheet['A']:
         bitstream_file = parameters[temp_index].split("=")[1]
         bitstream_file = bitstream_file.replace(" ","")
 
-    test_case = str(parameters[0].split("=")[1])
-    test_case = test_case.replace(" ","") 
+    
+    test_case = cell.value
     print("Running----------------------", test_case, "-----------------------------------\n\n")
-    if "=" in parameters[0]:
-        log_file = log_folder + "/" + cell.value + "/" + str(parameters[0].split("=")[1]) + ".txt"
-        log_file = log_file.replace(" ","")
-        md5_file = log_file.split(".")[0] + ".md5"
+    log_file = log_folder + "/" + cell.value + "/" + str(cell.value) + ".txt"
+    log_file = log_file.replace(" ","")
+    md5_file = log_file.split(".")[0] + ".md5"
 
     try :
         with open(log_file, "w") as file:
@@ -466,7 +579,20 @@ for cell in sheet['A']:
             process.wait()
             #this the maximum time we will wait for 1 usecase
             deadline = current_time + datetime.timedelta(minutes=180)
-            command = "ctrlsw_encoder --embedded --device /dev/al_e2xx -cfg " + str(log_folder) + "/" + str(test_case) + "/" + "input_" + str(test_case) + ".cfg " + "--md5-stream " + str(md5_file)
+            if omx_flag == 1:
+                command = "omx_encoder " + str(parameters[yuv_index_omx])
+                for x in parameters:
+                    if 'yuv' in x:
+                        continue
+                    elif 'out' in x:
+                        bitstream_omx = str(x)
+                        bitstream_omx = bitstream_omx.split(" ")[1]
+                        command = command + " " + str(x)
+                    else:
+                        command = command + " " + str(x)
+            else:    
+                command = "ctrlsw_encoder --embedded --device /dev/al_e2xx -cfg " + str(log_folder) + "/" + str(test_case) + "/" + "input_" + str(test_case) + ".cfg " + "--md5-stream " + str(md5_file)
+
             print(command)
         
             process = subprocess.Popen(command, shell=True, stdout=file, stderr=subprocess.STDOUT, text=True)
@@ -490,6 +616,9 @@ for cell in sheet['A']:
         print(f"Error : {e}, The file path does not exist.\n* Please check input YUV file *")
 
     print("\n\n", parameters, "\n\n")
+    if omx_flag == 1:
+        bitstream_file = bitstream_omx
+
     md5_command = ['md5sum', bitstream_file]
     md5_process = subprocess.Popen(md5_command, stdout=subprocess.PIPE)
     output, error = md5_process.communicate()
@@ -498,6 +627,10 @@ for cell in sheet['A']:
     else:
         print(f'md5 Error: {md5_command}')
         hw_md5_content = " "
+
+    if omx_flag == 1:
+        with open (md5_file, 'w') as file:
+            file.writelines(hw_md5_content)
    
     stream_md5_file = stream_md5_path + "/" + test_case + "/" + test_case + ".md5"
 
@@ -520,6 +653,15 @@ for cell in sheet['A']:
         final_index = parameters.index(filtered_list[0])
         output_string = parameters[final_index].split("=")[1]
         output_file = output_string.split("/")[-1]
+    
+    if omx_flag == 1:
+        substring = "out"
+        filtered_list = [element for element in parameters if substring in element]
+        if filtered_list:
+            final_index_omx = parameters.index(filtered_list[0])
+            output_string_omx = parameters[final_index_omx].split(" ")[1]
+            output_file_omx = output_string_omx.split("/")[-1]
+
 
     substring2 = "YUVFile"
     filtered_list2 = [element for element in parameters if substring2 in element]
@@ -564,6 +706,12 @@ for cell in sheet['A']:
     if hw_md5_flag != 1:
         hw_md5_cell = output_sheet.cell(row=cell.row,column=(hw_md5_index+1))
         hw_md5_cell.value = hw_md5_content
+    if omx_flag == 1:
+        input_file_cell = output_sheet.cell(row=cell.row,column=(input_index_omx+1))
+        input_file_cell.value = input_file_omx
+        out_file_cell = output_sheet.cell(row=cell.row,column=(out_index_omx+1))
+        out_file_cell.value = output_file_omx
+
     error_flag = parce_error(log_file, error_dict)
     if error_flag != 1 and result_flag != 1 and time_failure != 1 and md5_flag == 1:
         result_cell = output_sheet.cell(row=cell.row,column=(index+1))
