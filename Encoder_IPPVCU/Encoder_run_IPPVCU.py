@@ -194,8 +194,6 @@ def extract_parameters_omx(sheet_omx, next_row_omx, cell_values_omx, output_fold
         lines_omx.append(value)
         i = i + 1
         continue
-
-    print(lines_omx)
     try:
         os.mkdir(str(output_folder_omx) + "/" + str(TC_No))
         print("Created ", str(TC_No), "folder: Head over to this folder for more TC related information and output files")
@@ -344,7 +342,6 @@ def extract_parameters(sheet, next_row, cell_values, output_folder):
                         height3 = cell.value
                     if cell_values[i] == "Format":
                         Format = cell.value
-                    
                 target_text.append(key)
                 break
         value = str(cell_values[i]) + "      =      " + str(cell.value) + " "
@@ -521,6 +518,8 @@ for cell in sheet['A']:
         elif feature_folder == "Output/OpenMax":
             stream_md5_path = "/mnt/build/ssw_vcu/yashl/VCU2/regression_logs/Encoder/omx_support/Output/OpenMax" 
             omx_flag = 1
+        elif feature_folder == "Output/Performance_filesrc":
+            stream_md5_path = "/mnt/build/ssw_vcu/yashl/VCU2/regression_logs/Encoder/Performance/Output/Performance_filesrc"
         else:
             print("Error: Unexpected featute folder name")
 
@@ -555,8 +554,6 @@ for cell in sheet['A']:
         output_string = output_string.replace(" ","")
         if output_string == "PASS":
             continue
-
-
     bitstream_substring = "BitstreamFile"
     bitstream_filtered_list = [element for element in parameters if bitstream_substring in element]
     if bitstream_filtered_list:
@@ -579,7 +576,57 @@ for cell in sheet['A']:
             process.wait()
             #this the maximum time we will wait for 1 usecase
             deadline = current_time + datetime.timedelta(minutes=180)
-            if omx_flag == 1:
+            if sheet_option == 'Performance':
+                performance_enc_flag = 1
+                # Extracting required parameter to create gstreamer pipeline
+                for param in parameters:
+                    if 'MaxPicture' in param:
+                        maxpicture = param.split('=')[-1].strip()
+                    if 'FrameRate' in param :
+                        framerate = param.split('=')[-1].strip()
+                    if 'Width' in param :
+                        width =  param.split('=')[-1].strip()
+                    if 'Height' in param :
+                        height = param.split('=')[-1].strip()
+                    if 'Format' in param:
+                        format = param.split('=')[-1].strip()
+                        if format == 'I4CL':
+                            format = 'y444-12le'
+                        if format == 'NV12':
+                            format = 'nv12'
+                        if format == 'P012':
+                            format = 'p012-le'
+                        if format == 'P212':
+                            format = 'p212-12le'
+                        if format == 'T50C':
+                            format = 't50c'
+                        if format == 'T52C':
+                            format = 't52c'
+                        if format == 'T54C':
+                            format = 't54c'
+                        if format == 'T5MC':
+                            format = 't5mc'
+                        if format == 'T60C':
+                            format = 't60c'
+                        if format == 'T62C':
+                            format = 't62c'
+                        if format == 'T64C':
+                            format = 't64c'
+                        if format == 'T6MC':
+                            format = 't6mc'
+                        if format == 'Y012':
+                             format = 'gray12-le'
+                    if 'YUVFile' in param:
+                        yuvFile = param.split('=')[-1].strip()
+                    if 'BitstreamFile' in param:
+                        encoded_file = param.split('=')[-1].strip()
+                        if encoded_file.endswith('.avc'):
+                            omx_enc = 'omxh264enc'
+                        elif encoded_file.endswith('.hevc'):
+                            omx_enc = 'omxh265enc'
+
+                command =  f"gst-launch-1.0 filesrc location={yuvFile} num-buffers={maxpicture} ! rawvideoparse format={format}  width={width} height={height} framerate={framerate}/1 ! {omx_enc} !  filesink location={encoded_file}"
+            elif omx_flag == 1:
                 command = "omx_encoder " + str(parameters[yuv_index_omx])
                 for x in parameters:
                     if 'yuv' in x:
@@ -627,7 +674,9 @@ for cell in sheet['A']:
     else:
         print(f'md5 Error: {md5_command}')
         hw_md5_content = " "
-
+    if performance_enc_flag == 1:
+        with open (md5_file, 'w') as file:
+            file.writelines(hw_md5_content)
     if omx_flag == 1:
         with open (md5_file, 'w') as file:
             file.writelines(hw_md5_content)
