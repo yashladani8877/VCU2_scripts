@@ -44,11 +44,14 @@ keys_values = {
         'InputSleep', 'Loop', 'MaxPicture', 'ScnChgLookAhead', 'UseBoard']
 }
 
+# iterates through the key-value pairs, and it adds the entry to another dictionary `param_dict`.
 for key, values in keys_values.items():
     param_dict[key] = values
 
+# This dictionary contains predefined error messages,
+# key : represents a general description of the error, and
+# value : is a list of specific strings that are used to identify these errors in logs or output.
 error_dict = {}
-
 error_msg = {
         'Error in ctrlsw app': ['Error', 'error', 'ERROR'],
         'Assertion \'0\' failed': ['Assertion|failed', 'Assertion', 'assertion'],
@@ -59,33 +62,25 @@ error_msg = {
         'Exception caught: No frame decoded': ['Exception caught: No frame decoded'],
         'I/p YUVFile not found': ['Exception caught: Can\'t open file for reading'],
         'Exception caught Error': ['Exception caught'],
-        'Get higher Profile to support the usecase': ['getHevcMinimumProfile: Assertion \`0\' failed']
+        'Get higher Profile to support the usecase': ['getHevcMinimumProfile: Assertion \'0\' failed']
 }
 
+# iterates through the key-value pairs, and it adds the entry to another dictionary `error_dict`.
 for key, values in error_msg.items():
     error_dict[key] = values
 
-
-#param_dict[key] = values
-
+# Open an Excel file and Select a specific sheet from that file.
+# Return both the selected sheet and the whole workbook for further manipulation.
 def open_workbook(xls_file, xls_sheet):
-
-    #open workbook
     workbook = openpyxl.load_workbook(xls_file)
-
-    #Select the sheet by Index or name
     workbook_sheet = workbook[xls_sheet]
-
     return workbook_sheet, workbook
 
+# create a folder, checks if the folder already exists and It then returns the folder path for further use.
 def extract_feature(sheet, row_no):
-   # print(row_no)
-    #param_values will store the heading of the parameters (e.g Width, Height, Format etc..)
     cell = "A" + str(row_no)
-   # print("cell:", cell)
     feature_cell = sheet[cell].value
     feature_cell = "Output/" + str(feature_cell.split(".")[1])
-   # print(feature_cell)
     try:
         os.mkdir(feature_cell)
         print("Created ", feature_cell, ": folder")
@@ -99,15 +94,95 @@ def extract_feature(sheet, row_no):
             exit()
     return feature_cell
 
+# reads the header row of an Excel sheet, collects the values from each cell in that row, and returns them as a list.
 def extract_header(sheet, header_row_number):
-
     param_values = []
     for cell in sheet[header_row_number]:
         cell_value = cell.value
         param_values.append(cell_value)
-
-   # print(param_values)
     return param_values
+
+# function extracts parameter values from an Excel sheet, processes YUV file paths, and
+# skips empty or invalid cells, ensuring valid inputs for further script execution.
+# return processed list of parameter values
+def extract_parameters_omx(sheet_omx, next_row_omx, cell_values_omx, output_folder_omx):
+    #This function will be called in case of OpenMax TC only
+    TC_No = sheet_omx.cell(row=next_row_omx, column=1).value
+    a = 0
+    i = 0
+    j = 0
+    skip = 0
+
+    lines_omx = []
+
+    for cell in sheet_omx[next_row_omx]:
+        if cell_values_omx[i] == "Result" or cell_values_omx[i] == "TC_No" or cell_values_omx[i] == "HW MD5sum" or cell_values_omx[i] == "Comment":
+            if cell.value == "PASS":
+                skip = 1
+                break
+            i = i + 1
+            continue
+
+        #Non breaking space replace with None
+        if cell.value == '\xa0':
+            cell.value = None
+
+        if cell.value == None and cell_values_omx[i] != "input_file" and cell_values_omx[i] != "out":
+            i = i + 1
+            continue
+
+        if cell_values_omx[i] == "dma-out" or cell_values_omx[i] == "dma-in":
+            if cell.value == 0:
+                i = i + 1
+                continue
+            else:
+                lines_omx.append("--" + str(cell_values_omx[i]))
+                i = i + 1
+                continue
+
+        if cell_values_omx[i] == "Codec":
+            Codec = cell.value
+            value = "--" + str(cell.value)
+            lines_omx.append(value)
+            i = i + 1
+            continue
+
+        if cell_values_omx[i] == "input_file":
+            encoded_omx_file = "/mnt/build/ssw_vcu/yashl/VCU2/VNC_testing/IPP_platform_logs/omx_support/Output/OpenMax"
+            if 'hevc' in str(Codec):
+                input_omx_file = str(encoded_omx_file) + "/" + str(TC_No) + "/" + str(TC_No) + ".hevc"
+            elif 'avc' in str(Codec):
+                input_omx_file = str(encoded_omx_file) + "/" + str(TC_No) + "/" + str(TC_No) + ".avc"
+            else:
+                input_omx_file = "/mnt/build/ssw_vcu/yashl/VCU2/VNC_testing/IPP_platform_logs/omx_support/Output/OpenMax/TC_066/TC_066.avc"
+            value = str(input_omx_file)
+            lines_omx.append(value)
+            i = i + 1
+            continue
+
+        if cell_values_omx[i] == "out":
+            out_file = str(log_folder) + "/" + str(TC_No) + "/" + str(TC_No) + ".yuv"
+            value = "--" + str(cell_values_omx[i]) + " " + str(out_file)
+            lines_omx.append(value)
+            i = i + 1
+            continue
+
+        i = i + 1
+        continue
+
+    try:
+        os.mkdir(str(output_folder_omx) + "/" + str(TC_No))
+        print("Created ", str(TC_No), "folder: Head over to this folder for more TC related information and output files")
+    except FileExistsError:
+        print("Output folder ", str(TC_No), ": alreaady Exist do you want to continue and replace the data with new one? (y/n)")
+        user_input = input()
+        if user_input.lower() == 'y':
+            pass
+        else:
+            print("Program closing")
+
+            exit()
+    return lines_omx
 
 def extract_parameters(sheet, next_row, cell_values, output_folder):
 
@@ -117,10 +192,6 @@ def extract_parameters(sheet, next_row, cell_values, output_folder):
     a = 0
     i = 0
     j = 0
-
-   # print("####")
-   # print(cell_values)
-
 
     #lines will store the lines made from parsing the table and that we will insert in the table
     lines = []
@@ -134,7 +205,6 @@ def extract_parameters(sheet, next_row, cell_values, output_folder):
         value = str(cell_values[i]) + "      =      " + str(cell.value) + " "
         lines.append(value)
         i = i+1
-   # print(lines)
 
     #This block of code generates the cfg files for each testcase
     try:
@@ -154,6 +224,7 @@ def extract_parameters(sheet, next_row, cell_values, output_folder):
 
     return lines
 
+# Identify known issues or failures by checking logs predefined error message
 def parce_error(file_path, error_dict):
     with open(file_path, 'r') as file:
         file_contents = file.read()
@@ -193,6 +264,8 @@ except FileExistsError:
         exit()
 
 CWD = os.getcwd()
+omx_flag = 0
+hw_md5_flag = 0
 orignal_xls = args.file
 output_xls = "Output/output.xlsx"
 
@@ -223,9 +296,10 @@ sheet, new_workbook = open_workbook(str(args.file), str(args.sheet))
 for cell in sheet['A']:
     if sheet_option == "Dec_Conformance":
         no_stream_md5_file = 0
+    if sheet_option == "OpenMax":
+        omx_flag = 1
 
     fill_color = cell.fill.start_color.rgb
-   # print(f"The fill color of the cell is: {fill_color}")
 
    #We are checking for red color cell if red color cell found we are done with all the testcases and program will close
     if sheet[cell.coordinate].fill.start_color.rgb == 'FFFF0000':
@@ -234,22 +308,17 @@ for cell in sheet['A']:
 
     #If there is cell with no black color and it's value is None we skip that row
     if sheet[cell.coordinate].fill.start_color.rgb != 'FF000000' and cell.value is None:
-    #    print("Continue", cell.row)
         continue
 
     #If we find Black color cell we will have feature cell in next row
     if sheet[cell.coordinate].fill.start_color.rgb == 'FF000000':
-       # print("#####", cell.row)
         #Enabling flag so in next row we will extract feature name
         extract_feature_flag = 1
-     #   print("Black detected at row:", cell.row)
         continue
 
     if extract_feature_flag == 1:
-      #  print("extract_feature condition true")
         feature_folder = extract_feature(sheet, cell.row)
         log_folder = str(CWD) + "/" + str(feature_folder)
-       # print(log_folder)
         extract_feature_flag = 0
         #We got the feature name enabling this flag as in next row we will extract the headers of testcase
         extract_header_flag = 1
@@ -260,111 +329,100 @@ for cell in sheet['A']:
         continue
 
     if extract_header_flag == 1:
-       # print("Extract headers condition true")
         header_values = extract_header(sheet, cell.row)
-       # print("###############", "row", cell.row, len(header_values))
         extract_header_flag = 0
         continue
 
     if args.tc_no is not None:
-#        print("Tc argumenat found")
         if cell.value != args.tc_no:
             continue
 
 #--------------------------------------------------------------------------------------------------------------------    
-    parameters = extract_parameters(sheet, cell.row, header_values, log_folder)
+    if omx_flag == 1:
+         parameters = extract_parameters_omx(sheet, cell.row, header_values, log_folder)
+    else :
+        parameters = extract_parameters(sheet, cell.row, header_values, log_folder)
 #--------------------------------------------------------------------------------------------------------------------    
+    if omx_flag == 1:
+        substring = "out"
+        filtered_list = [element for element in parameters if substring in element]
+        if filtered_list:
+            final_index_omx = parameters.index(filtered_list[0])
+            output_string_omx = parameters[final_index_omx].split(" ")[1]
+            output_file_omx = output_string_omx.split("/")[-1]
+
+        input_file_param_index = [i for i, j in enumerate(parameters) if '.hevc' in j or '.avc' in j]
+        input_file_param_index = input_file_param_index[0]
+
+        if 'input_file' in header_values:
+            input_index_omx = header_values.index('input_file')
+            input_file_omx = parameters[input_file_param_index]
+        if 'out' in header_values:
+            out_index_omx = header_values.index('out')
 
     substring = "Bitstream"
     filtered_list = [element for element in parameters if substring in element]
-   # print(filtered_list)
     if filtered_list:
         final_index = parameters.index(filtered_list[0])
-       # print("@!@!@!@!@!@!@!@!",final_index)
         bitstream_file = parameters[final_index].split("=")[1]
         bitstream_file = bitstream_file.replace(" ","")
-        print(bitstream_file)
+
     substring = "TC_No"
     filtered_list = [element for element in parameters if substring in element]
     if filtered_list:
         final_index = parameters.index(filtered_list[0])
-       # print("@!@!@!@!@!@!@!@!",final_index)
         testcase_no = parameters[final_index].split("=")[1]
         testcase_no = testcase_no.replace(" ","")
-        print(testcase_no)
 
     if sheet_option == "Dec_Driver_level" or sheet_option == "Latency_mode":
         substring = "yuv file"
         filtered_list = [element for element in parameters if substring in element]
-       # print(filtered_list)
         if filtered_list:
             yuv_file_index = parameters.index(filtered_list[0])
-           # print("@!@!@!@!@!@!@!@!",final_index)
             yuv_file = parameters[yuv_file_index].split("=")[1]
             yuv_file = yuv_file.replace(" ","")
-            print(yuv_file)
-          #  print(bitstream_file)
     
     substring = "HW MD5sum"
     filtered_list = [element for element in parameters if substring in element]
-   # print(filtered_list)
     if filtered_list:
         hw_md5_index = parameters.index(filtered_list[0])
 
     substring = "Argon Md5Sum"
     filtered_list = [element for element in parameters if substring in element]
-   # print(filtered_list)
     if filtered_list:
         md5_index = parameters.index(filtered_list[0])
-       # print("@!@!@!@!@!@!@!@!",final_index)
         argon_md5sum = parameters[md5_index].split("=")[1]
         argon_md5sum = argon_md5sum.replace(" ","")
-     #   print(argon_md5sum)
 
     substring = "Category"
     filtered_list = [element for element in parameters if substring in element]
-   # print(filtered_list)
     if filtered_list:
         cat_index = parameters.index(filtered_list[0])
-       # print("####", cat_index)
-       # print("@!@!@!@!@!@!@!@!",final_index)
         cat_folder = parameters[cat_index].split("=")[1]
         cat_folder = cat_folder.replace(" ","")
-       # print(cat_folder)
         bd = cat_folder.split("_")[0]
-       # print(bd)
         if bd == "main10":
             bd_flag = 1
 
     substring = "Codec"
     filtered_list = [element for element in parameters if substring in element]
-   # print(filtered_list)
     if filtered_list:
         codec_index = parameters.index(filtered_list[0])
-       # print("####", cat_index)
-       # print("@!@!@!@!@!@!@!@!",final_index)
         codec_value = parameters[codec_index].split("=")[1]
         codec_value = codec_value.replace(" ","")
-       # print(codec_value)
 
     substring = "BitDepth"
     filtered_list = [element for element in parameters if substring in element]
-   # print(filtered_list)
     if filtered_list:
         bitdepth_index = parameters.index(filtered_list[0])
-       # print("####", cat_index)
-       # print("@!@!@!@!@!@!@!@!",final_index)
         bitdepth_value = parameters[bitdepth_index].split("=")[1]
         bitdepth_value = bitdepth_value.replace(" ","")
-       # print(bitdepth_value)
 
     if sheet_option == "Dec_Conformance":
         for root, dirs, files in os.walk(folder_path_conf):
             if bitstream_file in files:
                 file_path = os.path.join(root, bitstream_file)
-        #        print("####COnf File Path: ", file_path)
                 stream_md5_file = file_path.rsplit('.', 1)[0] + '.md5'
-         #       print(stream_md5_file)
                 if os.path.exists(stream_md5_file):
                     pass
                 else:
@@ -374,7 +432,6 @@ for cell in sheet['A']:
                     with open(stream_md5_file, 'r', encoding='utf-8') as file:
                         stream_md5_contents = file.read()
                         stream_md5_contents = re.sub(r'\s+', ' ', stream_md5_contents).strip()
-          #              print(stream_md5_contents)
                 except FileNotFoundError:
                     print("File not found")
                 except IOError:
@@ -383,11 +440,9 @@ for cell in sheet['A']:
 
     if sheet_option == "Dec_Argon":
         final_bitstream_path = folder_path_argon + "/" + cat_folder
-        print(final_bitstream_path)
         for root, dirs, files in os.walk(final_bitstream_path):
             if bitstream_file in files:
                 file_path = os.path.join(root, bitstream_file)
-                #print("####Argon File Path: ", file_path)
 
     if sheet_option == "Dec_Driver_level":
         if codec_value == 'MJPEG':
@@ -401,7 +456,6 @@ for cell in sheet['A']:
                 file_path = os.path.join(root, bitstream_file)
         md5_file = testcase_no + ".md5"
         folder_path_driver_level_yuv_new = folder_path_driver_level_yuv + "/" + testcase_no
-        print(folder_path_driver_level_yuv_new)
         for root, dirs, files in os.walk(folder_path_driver_level_yuv_new):
             if md5_file in files:
                 md5_file_path = os.path.join(root, testcase_no + ".md5")
@@ -427,7 +481,6 @@ for cell in sheet['A']:
         else:
             final_bitstream_path = folder_path_low_latency + "/GOP"
             folder_path_latency_mode_yuv_new = folder_path_latency_mode_yuv + "/Reduced_latency"
-        print(final_bitstream_path)
         for root, dirs, files in os.walk(final_bitstream_path):
             if bitstream_file in files:
                 file_path = os.path.join(root, bitstream_file)
@@ -436,7 +489,6 @@ for cell in sheet['A']:
                 file_path = None
         md5_file = testcase_no + ".md5"
         folder_path_latency_mode_yuv_new = folder_path_latency_mode_yuv_new + "/" + testcase_no
-        print(folder_path_latency_mode_yuv_new)
         for root, dirs, files in os.walk(folder_path_latency_mode_yuv_new):
             if md5_file in files:
                 md5_file_path = os.path.join(root, testcase_no + ".md5")
@@ -455,30 +507,27 @@ for cell in sheet['A']:
                     print("Error reading file")
 
     if sheet_option == "Dec_Fuzz":
-       # print("In Elseeeee")
         for root, dirs, files in os.walk(folder_path_fuzz):
             if bitstream_file in dirs:
                 fuzz_file_path = os.path.join(root, bitstream_file)
-        #        print("fuzz file path: ", fuzz_file_path)
                 fuzz_file_list = os.listdir(fuzz_file_path)
                 if len(fuzz_file_list) != 0:
                     fuzz_file_name = fuzz_file_list[0]
                     file_path = os.path.join(fuzz_file_path, fuzz_file_name)
-                    print(file_path)
 
-    if file_path is None:
-        print("Bistream file not found")
-       # print(output_file)
+    if omx_flag == 1:
+        if input_file_omx is None:
+            print("Input file not found")
+    else:
+        if file_path is None:
+            print("Bistream file not found")
 
-    test_case = str(parameters[0].split("=")[1])
-    test_case = test_case.replace(" ","") 
+    test_case = cell.value
     print("Running----------------------", test_case, "-----------------------------------\n\n")
 
-    if "=" in parameters[0]:
-        log_file = log_folder + "/" + cell.value + "/" + str(parameters[0].split("=")[1]) + ".txt"
-        log_file = log_file.replace(" ","")
-        md5sum_file = log_file.split(".")[0] + ".md5"
-   #     print("log file:", log_file)
+    log_file = log_folder + "/" + cell.value + "/" + str(cell.value) + ".txt"
+    log_file = log_file.replace(" ","")
+    md5sum_file = log_file.split(".")[0] + ".md5"
 
     with open(log_file, "w") as file:
         current_time = datetime.datetime.now()
@@ -488,7 +537,6 @@ for cell in sheet['A']:
         #this the maximum time we will wait for 1 usecase
         deadline = current_time + datetime.timedelta(minutes=5)
         if sheet_option == "Dec_Conformance":
-   #         print("###Bitdepth", bitdepth_value)
             if bitdepth_value == "10":
                 if codec_value == "AVC":
                     command = "ctrlsw_decoder --embedded --device /dev/al_d3xx -avc -in " + str(file_path) + " -bd 10" + " -noyuv --md5 " + md5sum_file
@@ -559,8 +607,39 @@ for cell in sheet['A']:
                         command = "ctrlsw_decoder --embedded --device /dev/al_d3xx -in " + str(file_path) + " -bd 8" + " -noyuv --md5 " + md5sum_file + " -lowlat"
                     else:
                         command = "ctrlsw_decoder --embedded --device /dev/al_d3xx -in " + str(file_path) + " -bd 8" + " -noyuv --md5 " + md5sum_file
-    
-        print(command)
+
+        if sheet_option == 'Performance':
+            for param in parameters:
+                if 'TC_No' in param:
+                    tc_no = param.split('=')[-1].strip()
+
+                if 'BitstreamFile' in param:
+                    encoded_file = param.split('=')[-1].strip()
+                    if encoded_file.endswith('.avc'):
+                        omx_dec = 'omxh264dec'
+                        h26_parse = 'h264parse'
+                    elif encoded_file.endswith('.hevc'):
+                        omx_dec = 'omxh265dec'
+                        h26_parse = 'h265parse'
+
+            source_path = "/mnt/build/ssw_vcu/yashl/VCU2/VNC_testing/IPP_platform_logs/Performance/Output/Performance_filesrc"
+            command = f'gst-launch-1.0 filesrc location={source_path}/{tc_no}/{encoded_file} ! {h26_parse} ! {omx_dec} internal-entropy-buffers=5 !  video/x-raw ! queue max-size-bytes=0 ! fpsdisplaysink name=fpssink text-overlay=false video-sink="fakesink" sync=false -v'
+
+        if omx_flag == 1:
+            command = "omx_decoder " + str(parameters[input_file_param_index])
+
+            for x in parameters:
+                if '.hevc' in x:
+                    continue
+                elif '.avc' in x:
+                    continue
+                elif 'out' in x:
+                    bitstream_omx = str(x)
+                    bitstream_omx = bitstream_omx.split(" ")[1]
+                    command = command + " " + str(x)
+                else:
+                    command = command + " " + str(x)
+        print(command,"\n\n")
         process = subprocess.Popen(command, shell=True, stdout=file, stderr=subprocess.STDOUT, text=True)
         pid = process.pid
         #Polling here until the encoding or decoding is Done
@@ -572,16 +651,28 @@ for cell in sheet['A']:
         process = subprocess.Popen(mem_command, shell=True, stdout=file, stderr=subprocess.STDOUT, text=True)
         process.wait()
 
+        if omx_flag == 1:
+            bitstream_file = bitstream_omx
 
+            md5_command = ['md5sum', bitstream_file]
+            md5_process = subprocess.Popen(md5_command, stdout=subprocess.PIPE)
+            output, error = md5_process.communicate()
+            if md5_process.returncode == 0:
+                hw_md5_flag = 1
+                hw_md5_content = output.decode().split()[0]
+            else:
+                print(f'md5 Error: {md5_command}')
+                hw_md5_content = " "
+            with open (md5sum_file, 'w') as file:
+                file.writelines(hw_md5_content)
+            if os.path.exists(bitstream_file):
+                os.remove(bitstream_file)
     try:
         with open(md5sum_file, 'r', encoding='utf-8') as file:
             hw_md5_contents = file.read()
             hw_md5_contents = hw_md5_contents.strip()
-            print("####YUV Md5sum: ", hw_md5_contents)
     except FileNotFoundError:
         print("File not found")
-
-    print("\n\n", parameters, "\n\n")
 
     if sheet_option == "Dec_Conformance" or sheet_option == "Dec_Driver_level" or sheet_option == "Latency_mode" :
         try:
@@ -679,7 +770,26 @@ for cell in sheet['A']:
         if hw_md5_result_flag != 1 and hw_md5_contents != "md5sum:":
             result_cell = output_sheet.cell(row=cell.row,column=(hw_md5_index+1))
             result_cell.value = hw_md5_contents
+
+    if omx_flag == 1:
+        if hw_md5_flag == 1:
+            hw_md5_cell = output_sheet.cell(row=cell.row,column=(hw_md5_index+1))
+            hw_md5_cell.value = hw_md5_content
+        input_file_cell = output_sheet.cell(row=cell.row,column=(input_index_omx+1))
+        input_file_cell.value = input_file_omx
+        out_file_cell = output_sheet.cell(row=cell.row,column=(out_index_omx+1))
+        out_file_cell.value = output_file_omx
+        if error_flag != 1 and result_flag != 1 and hw_md5_flag != 0:
+            result_cell = output_sheet.cell(row=cell.row,column=(index+1))
+            result_cell.value = "PASS"
+            print("Result : ", result_cell.value)
+        else:
+            result_cell = output_sheet.cell(row=cell.row,column=(index+1))
+            result_cell.value = "FAIL"
+            print("Result : ", result_cell.value)
+
     output_workbook.save(output_xls)
 
     print("Completed----------------------", test_case, "-----------------------------------\n\n")
+
 
